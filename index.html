@@ -12,58 +12,71 @@
     <br><br>
     <form class="max-w-sm mx-auto">
       <div class="mb-5">
-        <video id="video" autoplay></video>
+        <video id="webcam"autoplay playsinline width="400" height="600"></video>
       </div>
       <div id="controls" class="mb-5">
-        <button type="button" onclick="flipCamera()" class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Flip Camera</button>
+        <button onclick="flipCamera()" class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Flip Camera</button>
       </div>
-      <button type="button" onclick="predict()" class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Predict</button>
+      <!-- <button type="button" onclick="predict()" class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Predict</button> -->
       <br>
       <p id="result" style="font-weight: bolder; font-size: 3em; text-align: center;"></p>
     </form>
 
     <script>
-      let video = document.getElementById('video');
+      startPrediction()
+      let webcamElement = document.getElementById('webcam');
+      let resultElement = document.getElementById('result');
       let useFrontCamera = true;
-
-      function startCamera() {
-        navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: useFrontCamera ? 'user' : 'environment'
+      let model;
+  
+      async function setupWebcam(useFrontCamera) {
+        return new Promise((resolve, reject) => {
+          const navigatorAny = navigator;
+          navigator.getUserMedia = navigator.getUserMedia ||
+            navigatorAny.webkitGetUserMedia || navigatorAny.mozGetUserMedia ||
+            navigatorAny.msGetUserMedia;
+          if (navigator.getUserMedia) {
+            navigator.getUserMedia(
+              { 
+                video: { 
+                  facingMode: useFrontCamera ? 'user' : 'environment' 
+                } 
+              },
+              stream => {
+                webcamElement.srcObject = stream;
+                webcamElement.addEventListener('loadeddata', () => resolve(), false);
+              },
+              error => reject());
+          } else {
+            reject();
           }
-        }).then(stream => {
-          video.srcObject = stream;
-          video.play();
-        }).catch(err => {
-          console.error("Error accessing the camera: " + err);
         });
       }
-
       function flipCamera() {
-        useFrontCamera = !useFrontCamera;
-        startCamera();
-      }
-
+          useFrontCamera = !useFrontCamera;
+          setupWebcam(useFrontCamera);
+        }
+  
       async function predict() {
-        var model = await tf.loadGraphModel('./model.json');
-
-        let videoElement = document.getElementById('video');
-        let example = tf.browser.fromPixels(videoElement).cast('float32');
-        console.log(example.shape);
-        example = example.reshape([1, example.shape[0], example.shape[1], example.shape[2]]);
-
-        let prediction = await model.predict(example);
-        let class_scores = await prediction.data();
-        let max_score_id = class_scores.indexOf(Math.max(...class_scores));
-        let classes = ["Pattern", "Solid"];
-        console.log(class_scores);
-        document.getElementById("result").innerHTML = classes[max_score_id].toString();
+        const videoFrame = tf.browser.fromPixels(webcamElement).cast('float32');
+        const resizedFrame = videoFrame.resizeBilinear([300, 300]);
+        const batchedFrame = resizedFrame.expandDims(0);
+  
+        const prediction = await model.predict(batchedFrame);
+        const class_scores = await prediction.data();  
+        const max_score_id = class_scores.indexOf(Math.max(...class_scores));
+        const classes = ["Pattern", "Solid"];
+  
+        resultElement.innerHTML = classes[max_score_id].toString();
+  
+        requestAnimationFrame(predict);
       }
-
-      window.onload = () => {
-        startCamera();
-      };
-      predict();
+  
+      async function startPrediction() {
+        model = await tf.loadGraphModel('./model.json');
+        await setupWebcam();
+        predict();
+      }
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.3.0/flowbite.min.js"></script>
   </body>
