@@ -3,63 +3,67 @@
   <head>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.3.0/flowbite.min.css" rel="stylesheet" />
+    <script type="text/javascript" src="https://unpkg.com/webcam-easy/dist/webcam-easy.min.js"></script>
     <link rel="stylesheet" href="style.css">
   </head>
 
   <body>
-
-  	<h1 style="font-weight: bold ; font-size: 4em; text-align: center;">Image Classifier</h1>
-
-    <!-- <br> -->
-    <!-- <input accept="image/*" type='file' id="input_button" /> -->
-
-  	<!-- <br> -->
-    <!-- .<img id="img1" src="./image.jpg" style="width: 300px " /> -->
-    <!-- <br>  <br>
-    <button   onclick="predict()">predict</button>
-    <br>
-    <p id="result"> </p> -->
-    
-
+    <h1 style="font-weight: bold; font-size: 4em; text-align: center; color: white;">Image Classifier</h1>
+    <br><br>
     <form class="max-w-sm mx-auto">
-      <div class="mb-5" >
-        <img id="img1" src="./image.jpg" style="width: 350px " /> 
+      <div class="mb-5">
+        <video id="video" autoplay></video>
       </div>
-      <div class="mb-5" >
-        <input accept="image/*" type='file' id="input_button" >
+      <div id="controls" class="mb-5">
+        <button type="button" onclick="flipCamera()" class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Flip Camera</button>
       </div>
-      <button  type="button" onclick="predict()"  class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Predict</button>
+      <button type="button" onclick="predict()" class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Predict</button>
       <br>
-      <p id="result" style="text-align: center; font-weight: bolder; font-size: 3em;"> </p>
+      <p id="result" style="font-weight: bolder; font-size: 3em; text-align: center;"></p>
     </form>
-    <br>
+
     <script>
+      let video = document.getElementById('video');
+      let useFrontCamera = true;
 
-      let image = document.getElementById('img1');
-      let input_button = document.getElementById('input_button');
+      function startCamera() {
+        navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: useFrontCamera ? 'user' : 'environment'
+          }
+        }).then(stream => {
+          video.srcObject = stream;
+          video.play();
+        }).catch(err => {
+          console.error("Error accessing the camera: " + err);
+        });
+      }
 
-      input_button.onchange = evt => {
-        const [file] = input_button.files
-        if (file) {
-          image.src = URL.createObjectURL(file)
-        }
+      function flipCamera() {
+        useFrontCamera = !useFrontCamera;
+        startCamera();
       }
 
       async function predict() {
-        var  model = await tf.loadGraphModel('./model.json');
+        var model = await tf.loadGraphModel('./model.json');
 
-        let example = tf.browser.fromPixels(document.getElementById("img1") , 3 ).cast('float32');
-        console.log(  example.shape  )
-        example = example.reshape([1,example.shape[0], example.shape[1] ,example.shape[2]]);
+        let videoElement = document.getElementById('video');
+        let example = tf.browser.fromPixels(videoElement).cast('float32');
+        console.log(example.shape);
+        example = example.reshape([1, example.shape[0], example.shape[1], example.shape[2]]);
 
         let prediction = await model.predict(example);
         let class_scores = await prediction.data();
-        let max_score_id =  class_scores.indexOf(Math.max(...class_scores));
-        let classes = [  "Pattern" ,  "Solid" ,  ] ;
-
+        let max_score_id = class_scores.indexOf(Math.max(...class_scores));
+        let classes = ["Pattern", "Solid"];
         console.log(class_scores);
         document.getElementById("result").innerHTML = classes[max_score_id].toString();
       }
+
+      window.onload = () => {
+        startCamera();
+      };
+      predict();
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.3.0/flowbite.min.js"></script>
   </body>

@@ -1,10 +1,18 @@
 body {
-    background: linear-gradient(to right, #6a11cb, #2575fc); /* Gradient background */
+    background: linear-gradient(to right, #6a11cb, #2575fc); 
     
   }
   form {
-    background: rgba(255, 255, 255, 0.8); /* Transparent background */
+    background: rgba(255, 255, 255, 0.8); 
     padding: 20px;
     border-radius: 10px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+  video {
+    width: 640px;
+    height: 400px;
+    border-radius: 10px;
+  }
+  #controls {
+    margin-top: 10px;
   }
